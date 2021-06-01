@@ -1,5 +1,4 @@
 package main
-
 import (
 	"log" // logging 
 	"net" // socket programming
@@ -10,26 +9,15 @@ import (
 	"github.com/go-redis/redis/v8" // redis server
 	"github.com/joho/godotenv" // dot env
 	"os" // mengakses dot enviroment variables
-	"reflect" // mengetahui type dari variable
+	// "reflect" // mengetahui type dari variable
 	"strconv" // convert string to int vice versa
 	"context" // memberi tahu harus di tahan berapa lama (misal goroutine)
 )
 
 var DurationTimeOut = 240  // dalam second
 
-//print 1 object string only
-func pr1(message string){
-	fmt.Println(message)
-}
-type Position struct{
-	X float32
-	Y float32
-}
-type Response struct {
-	Channel string
-	Position Position
-}
 var rdb *redis.Client
+
 var ctx = context.Background()
 var topic *redis.PubSub
 func connectRedis() {
@@ -67,6 +55,23 @@ func startSubscribeRedis(){
 	
 	}
 }
+
+
+
+
+//print 1 object string only
+func pr1(message string){
+	fmt.Println(message)
+}
+type Position struct{
+	X float32
+	Y float32
+}
+type Response struct {
+	Channel string
+	Position Position
+}
+
 
 func main() {
 
@@ -126,7 +131,6 @@ func appendClient(addr net.Addr){
 	timeOut =  append(timeOut,string(time.Now().Unix()))
 	clientCount++
 
-	return
 
 }
 func removeIdleClients(){
