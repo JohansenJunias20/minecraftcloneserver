@@ -7,9 +7,15 @@ import (
 	"strings" // convert to string
 	"encoding/json" // for data
 	"time" // unix for timeout connection
+	"github.com/go-redis/redis/v8" // redis server
+	"github.com/joho/godotenv" // dot env
+	"os" // mengakses dot enviroment variables
+	"reflect" // mengetahui type dari variable
+	"strconv" // convert string to int vice versa
+	"context" // memberi tahu harus di tahan berapa lama (misal goroutine)
 )
 
-const durationTimeOut = 240 int // dalam second
+var DurationTimeOut = 240  // dalam second
 
 //print 1 object string only
 func pr1(message string){
@@ -23,21 +29,66 @@ type Response struct {
 	Channel string
 	Position Position
 }
+var rdb *redis.Client
+var ctx = context.Background()
+var topic *redis.PubSub
+func connectRedis() {
+	
+	REDIS_HOST := os.Getenv("REDIS_HOST")
+	REDIS_PORT := os.Getenv("REDIS_PORT")
+    rdb = redis.NewClient(&redis.Options{
+		Addr:     REDIS_HOST+":"+REDIS_PORT,
+        Password: "", // no password set
+        DB:       0,  // use default DB
+    })
+
+	go startSubscribeRedis()
+
+    // err := rdb.Set(ctx, "key", "value", 0).Err()
+    // if err != nil {
+    //     panic(err)
+    // }
+
+    // val, err := rdb.Get(ctx, "key").Result()
+    // if err != nil {
+    //     panic(err)
+    // }
+    // fmt.Println("key", val)
+
+
+}
+
+func startSubscribeRedis(){
+	topic = rdb.Subscribe(ctx, "new_users")
+	channel := topic.Channel()
+	// Itterate any messages sent on the channel
+	for msg := range channel {
+		fmt.Println("msg from redis: ",msg)
+	
+	}
+}
 
 func main() {
-	// listen to incoming udp packets
-	// var clientsIP []string
-	// var clientsPort []int
+
+	//inisialisasi dot env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	connectRedis()
+ 	UDP_PORT := os.Getenv("UDP_PORT")
+
+
 	go removeIdleClients() // make new goroutine untuk menghapus client yang idle
 
-	pc, err := net.ListenPacket("udp", ":28000")
+	pc, err := net.ListenPacket("udp", ":" + UDP_PORT)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer pc.Close()
 
 	for {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 4096)
 		n, addr, err := pc.ReadFrom(buf)
 		if err != nil {
 			continue
@@ -72,7 +123,7 @@ func appendClient(addr net.Addr){
 	}
 
 	clients = append(clients, addr)
-	timeOut =  timeOut(timeOut,time.Now().Unix())
+	timeOut =  append(timeOut,string(time.Now().Unix()))
 	clientCount++
 
 	return
@@ -86,8 +137,12 @@ func removeIdleClients(){
 		select {
 		 case <- ticker.C:
 			for i := 0; i < clientCount; i++ {
-				if(time.Now().Unix() - int(timeOut[i]) > durationTimeOut ){
-					clients=pop(clients,i)
+				old, err := strconv.Atoi(timeOut[i])
+				if(err!= nil){
+					panic(err)
+				}
+				if(int64(time.Now().Unix()) - int64(old) > int64(DurationTimeOut) ){
+					clients=popByIndex(clients,i)
 					clientCount--
 				}
 			}
@@ -122,6 +177,7 @@ func broadcast(response string){
 	}
 }
 
-func pop(slice []int, s int) []int {
+func popByIndex(slice []net.Addr, s int) []net.Addr {
+	
     return append(slice[:s], slice[s+1:]...)
 }

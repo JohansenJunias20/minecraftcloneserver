@@ -1,28 +1,15 @@
-const dgram = require('dgram');
-const server = dgram.createSocket('udp4');
+const WebSocket = require('ws');
 
-server.on('error', (err) => {
-    console.log(`server error:\n${err.stack}`);
-    server.close();
+const wss = new WebSocket.Server({ port: 5000 });
+var PlayerName
+wss.on('connection', function connection(ws) {
+    ws.on('message', function incoming(message) {
+        console.log('received: %s', message);
+    });
+
+    ws.send('something');
 });
 
-server.on('message', (msg, rinfo) => {
-    console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-    var dummyPos = 0;
-    var json = {
-        channel:"positions",
-        json:
-    }
-    setInterval(() => {
-        server.send(dummyPos, rinfo.port, rinfo.address);
-        dummyPos++;
-    }, 1000);
-});
+wss.on("disconnect", (ws) => {
 
-server.on('listening', () => {
-    const address = server.address();
-    console.log(`server listening ${address.address}:${address.port}`);
-});
-
-server.bind(28000);
-// Prints: server listening 0.0.0.0:41234
+})
