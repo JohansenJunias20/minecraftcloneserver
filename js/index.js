@@ -21,21 +21,22 @@ subscriber.on("message", function (channel, message) {
 });
 subscriber.subscribe("verified");
 const players = [
-    {
-        ID: 1,
-        used: false,
-        ws: undefined
-    },
-    {
-        ID: 2,
-        used: false,
-        ws: undefined
-    },
-    {
-        ID: 3,
-        used: false,
-        ws: undefined
-    }]
+    // {
+    //     ID: 1,
+    //     used: false,
+    //     ws: undefined
+    // },
+    // {
+    //     ID: 2,
+    //     used: false,
+    //     ws: undefined
+    // },
+    // {
+    //     ID: 3,
+    //     used: false,
+    //     ws: undefined
+    // }
+]
 
 wss.on('connection', function connection(ws) {
     console.log("made connection")
@@ -46,7 +47,12 @@ wss.on('connection', function connection(ws) {
             case "join":
                 console.log(`recieved message from join channel`)
                 console.log(`selecting player ID...`)
-                const selectedPlayer = players.find(obj => obj.used == false)
+                players.push(
+                    {
+                        ID: players.length,
+                        ws: undefined
+                    });
+                const selectedPlayer = players[players.length - 1]//last index
                 selectedPlayer.ws = ws
                 selectedPlayer.used = true
                 console.log(`player ID selected`)
@@ -70,10 +76,15 @@ wss.on('connection', function connection(ws) {
         console.log('received: %s', message);
     });
     ws.on("disconnect", function () {
-        const disconnectedPlayer = players.find(obj => obj.ws == ws);
-        publisher.publish("leave", selectedPlayer.name, function () {
-            disconnectedPlayer.used = false;
-            disconnectedPlayer.ws = undefined;
+      
+    });
+    
+    ws.on('close', function close() {
+        const indexDP = players.findIndex(obj => obj.ws == ws);
+        const ID = players[indexDP].ID;
+        console.log(`${ID} disconnected from the server`)
+        players.splice(indexDP, 1);
+        publisher.publish("leave", ID, function () {
 
             console.log("done publish redis!")
         });
@@ -84,6 +95,3 @@ wss.on('connection', function connection(ws) {
 
 
 
-wss.on("disconnect", (ws) => {
-    players
-})

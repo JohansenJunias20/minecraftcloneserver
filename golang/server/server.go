@@ -5,11 +5,7 @@ import (
 	"fmt" // print to terminal
 	"strings" // convert to string
 	// "encoding/json" // for data
-<<<<<<< HEAD
 	// "time" // unix for timeout connection
-=======
-	"time" // unix for timeout connection
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
 	"github.com/go-redis/redis/v8" // redis server
 	"github.com/joho/godotenv" // dot env
 	"os" // mengakses dot enviroment variables
@@ -23,11 +19,8 @@ var DurationTimeOut = 240  // dalam second
 var rdb *redis.Client
 
 var ctx = context.Background()
-<<<<<<< HEAD
 var topicJoin *redis.PubSub
-=======
-// var topicJoin *redis.PubSub
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
+var topicLeave *redis.PubSub
 func connectRedis() {
 	
 	REDIS_HOST := os.Getenv("REDIS_HOST")
@@ -38,11 +31,7 @@ func connectRedis() {
         DB:       0,  // use default DB
     })
 	fmt.Println("connected to redis server...")
-<<<<<<< HEAD
 	go startSubscribeRedis()
-=======
-
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
     // err := rdb.Set(ctx, "key", "value", 0).Err()
     // if err != nil {
     //     panic(err)
@@ -57,10 +46,11 @@ func connectRedis() {
 
 }
 
-<<<<<<< HEAD
 func startSubscribeRedis(){
 	topicJoin = rdb.Subscribe(ctx, "join")
 	channelJoin := topicJoin.Channel()
+	topicLeave = rdb.Subscribe(ctx, "leave")
+	channelLeave := topicLeave.Channel()
 	fmt.Println(reflect.TypeOf(channelJoin))
 	// Itterate any messages sent on the channel
 	// for msg := range channelJoin {
@@ -70,8 +60,32 @@ func startSubscribeRedis(){
 	// }
 
 	go SubscribeJoin(channelJoin)
+	go SubscribeLeave(channelLeave)
 }
+//subscribe some one who disconnected
+func SubscribeLeave(channelLeave <-chan *redis.Message){
+	for msg := range channelLeave {
+		fmt.Println("recieve leave signal from redis")
+		fmt.Println(msg.Payload)
+		ID := msg.Payload
+		
+		id, err := strconv.Atoi(ID)
+		if(err!=nil){
+			fmt.Println(err)
+		}
 
+		for i := 0; i < len(clients); i++ {
+			if(clients[i].ID == id){
+				clients = popByIndex(clients,i)
+			}
+		}
+		fmt.Println("panjang client: ")
+		fmt.Println(len(clients))
+		// fmt.Println("msg from rediss: ")
+		// go appendClient(msg.Payload)
+		// fmt.Println(msg.Payload)
+	}
+}
 func SubscribeJoin(channelJoin <-chan *redis.Message){
 	for msg := range channelJoin {
 		fmt.Println("recieve join signal from redis")
@@ -94,36 +108,6 @@ func SubscribeJoin(channelJoin <-chan *redis.Message){
 		// fmt.Println(msg.Payload)
 	}
 }
-=======
-// func startSubscribeRedis(){
-// 	topicJoin = rdb.Subscribe(ctx, "join")
-// 	channelJoin := topicJoin.Channel()
-// 	fmt.Println(reflect.TypeOf(channelJoin))
-// 	// Itterate any messages sent on the channel
-// 	// for msg := range channelJoin {
-// 	// 	fmt.Println("msg from rediss: ")
-// 	// 	// go appendClient(msg.Payload)
-// 	// 	fmt.Println(msg.Payload)
-// 	// }
-
-// 	go SubscribeJoin(channelJoin)
-// }
-
-// func SubscribeJoin(channelJoin <-chan *redis.Message){
-// 	for msg := range channelJoin {
-// 		newNickname := msg.Payload
-		
-// 		var tmp Client
-// 		tmp.Name = newNickname
-// 		tmp.Client = nil
-// 		tmp.LastTimeConnect = time.Now().Unix()
-// 		clients = append(clients,tmp)
-// 		// fmt.Println("msg from rediss: ")
-// 		// go appendClient(msg.Payload)
-// 		// fmt.Println(msg.Payload)
-// 	}
-// }
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
 
 
 //print 1 object string only
@@ -151,11 +135,7 @@ func main() {
  	UDP_PORT := os.Getenv("UDP_PORT")
 	connectRedis()
 
-<<<<<<< HEAD
 	// go removeIdleClients() // make new goroutine untuk menghapus client yang idle
-=======
-	go removeIdleClients() // make new goroutine untuk menghapus client yang idle
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
 	pc, err = net.ListenPacket("udp", ":" + UDP_PORT)
 	fmt.Println("listening on port ", UDP_PORT)
 	if err != nil {
@@ -178,7 +158,6 @@ func main() {
 type Client struct {
 	ID int
 	Client net.Addr
-<<<<<<< HEAD
 	// LastTimeConnect int64
 }
 
@@ -189,7 +168,7 @@ type TimeOutCounter struct {
 	// LastTimeConnect int64
 }
 var TimeOut []TimeOutCounter
-var clientCount = 3
+// var clientCount = 3
 func serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	
 	fmt.Println("recieving msg:",string(buf))
@@ -216,7 +195,7 @@ func serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		// var ID int
 		id, err := strconv.Atoi(arr[2])
 		fmt.Println("id: ",id)
-		for i := 0; i < clientCount; i++ {
+		for i := 0; i < len(clients); i++ {
 			if(err!=nil){
 				break;
 			}
@@ -258,69 +237,6 @@ func serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 
 		
 	// }
-=======
-	LastTimeConnect int64
-}
-
-var clients =  []Client { 
-    Client {
-		ID :1,
-		Client: nil,
-		LastTimeConnect: 0,
-    },
-    Client {
-		ID: 2,
-		Client: nil,
-		LastTimeConnect: 0,
-    },
-    Client {
-		ID: 3,
-		Client: nil,
-		LastTimeConnect: 0,
-    },
-}
-// var timeOut []string
-var clientCount = 3
-func serve(pc net.PacketConn, addr net.Addr, buf []byte) {
-	
-	arr := strings.Split(string(buf), "|")
-	if(len(arr)>=1){
-		return;
-	}
-	channel := arr[0]
-	switch channel {
-		case "position":// msg: position|x:30;y:25;z:40
-
-			if(len(arr)!=3){
-				return;
-			}
-			x,errx := strconv.ParseFloat(strings.Split(strings.Split(arr[2],";")[0], ":")[1], 64)
-			y,erry := strconv.ParseFloat(strings.Split(strings.Split(arr[2],";")[1], ":")[1], 64)
-			z,errz := strconv.ParseFloat(strings.Split(strings.Split(arr[2],";")[2], ":")[1], 64)
-			if(errx!=nil || erry != nil || errz != nil){
-				return;
-			}
-			ID, err := strconv.Atoi(string(arr[1]))
-			if(err != nil){
-				return;
-			}
-			broadcastPosition(x,y,z,ID)
-			break;
-
-		case "join": // msg: join|
-			for i := 0; i < clientCount; i++ {
-				if(clients[i].Client == nil){
-					err := rdb.Publish(ctx, "id_udp_client",clients[i].ID).Err()
-					if err != nil {
-						panic(err)
-					}
-					clients[i].Client = addr
-					clients[i].LastTimeConnect =  time.Now().Unix()
-					break;
-				}
-			}
-	}
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
 	fmt.Println("some one connected")
 
 	description := strings.Split(string(addr.String()),":")
@@ -330,17 +246,18 @@ func serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	// broadcast(string(buf))
 }
 func broadcastPosition(x float64, y float64,z float64, ID int){
-	for i := 0; i < clientCount; i++ {
+	for i := 0; i < len(clients); i++ {
 		if(clients[i].ID != ID){
 			pc.WriteTo([]byte("{\"ID\":"+strconv.Itoa(ID)+", \"x\":"+FloatToString(x)+", \"y\":"+FloatToString(y)+"\"z\":"+FloatToString(z)+" }"), clients[i].Client)
 		}
 	}
-<<<<<<< HEAD
 }
-
 func FloatToString(input_num float64) string {
     // to convert a float number to a string
     return strconv.FormatFloat(input_num, 'f', 6, 64)
+}
+func popByIndex(slice []Client, s int) []Client {
+    return append(slice[:s], slice[s+1:]...)
 }
 
 // func removeIdleClients(){
@@ -366,56 +283,3 @@ func FloatToString(input_num float64) string {
 // 	 }
 
 // }
-=======
-}
-
-func FloatToString(input_num float64) string {
-    // to convert a float number to a string
-    return strconv.FormatFloat(input_num, 'f', 6, 64)
-}
-
-func removeIdleClients(){
-	//loop dipanggil tiap 10 detik sekali
-	ticker := time.NewTicker(10 * time.Second)
-	quit := make(chan struct{})
-	for {
-		select {
-		 case <- ticker.C:
-			for i := 0; i < clientCount; i++ {
-				if(clients[i].Client == nil){
-					continue
-				}
-				old := clients[i].LastTimeConnect
-				if(time.Now().Unix() - old > int64(DurationTimeOut)){
-					popByIndex(clients,i)
-				}
-			}
-		 case <- quit:
-			 ticker.Stop()
-			 return
-		 }
-	 }
-
-}
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
-// func broadcast(response string){
-// 	fmt.Println(response)
-// 	var responseJSON Response
-// 	err :=json.Unmarshal([]byte(response), &responseJSON)
-// 	if err!=nil{
-// 		fmt.Println(err)
-// 	}else {
-// 		fmt.Println(responseJSON.Channel)
-// 	}
-
-
-// }
-
-func popByIndex(slice []Client, s int) {
-	slice[s].Client = nil
-<<<<<<< HEAD
-	// slice[s].LastTimeConnect = 0
-=======
-	slice[s].LastTimeConnect = 0
->>>>>>> 4cdade0ae3db35136b2582a2ab126bc9b4892ef9
-}
