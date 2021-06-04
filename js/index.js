@@ -41,10 +41,18 @@ const players = [
 wss.on('connection', function connection(ws) {
     console.log("made connection")
     ws.on('message', function incoming(message) {
+        console.log("reciving msg")
         console.log(message)
         message = JSON.parse(message);
         switch (message.channel) {
             case "join":
+                //kasih tau lokasi player2 sebelumnya ke player yg baru join,
+                players.forEach((player, index) => {
+                    ws.send(JSON.stringify({
+                        channel: "join",
+                        ID: index
+                    }))
+                })
                 console.log(`recieved message from join channel`)
                 console.log(`selecting player ID...`)
                 players.push(
@@ -63,10 +71,12 @@ wss.on('connection', function connection(ws) {
                     ID
                 }));
 
+
                 console.log(`publish ID to redis in the join channel`)
                 publisher.publish("join", selectedPlayer.ID, function () {
                     // selectedPlayer.ws = ws
                     console.log("done publish redis!")
+                    broadcastToOthers("join", selectedPlayer.ID);
                 });
                 break;
 
@@ -76,21 +86,38 @@ wss.on('connection', function connection(ws) {
         console.log('received: %s', message);
     });
     ws.on("disconnect", function () {
-      
+        console.log("disconnected")
     });
-    
+
     ws.on('close', function close() {
         const indexDP = players.findIndex(obj => obj.ws == ws);
-        const ID = players[indexDP].ID;
-        console.log(`${ID} disconnected from the server`)
-        players.splice(indexDP, 1);
-        publisher.publish("leave", ID, function () {
+        console.log(`player count ${players.length}`);
+        console.log(`${indexDP} disconnected`);
+        if (indexDP != -1) {
+            const ID = players[indexDP].ID;
+            console.log(`${ID} disconnected from the server`)
+            players.splice(indexDP, 1);
+            publisher.publish("leave", ID, function () {
 
-            console.log("done publish redis!")
-        });
+                console.log("done publish redis!")
+            });
+        }
     });
     // ws.send('something');
 });
+
+function broadcastToOthers(channel, index) {
+    console.log("broadcasting")
+    var msg = {
+        channel,
+        ID: index
+    }
+    players.forEach((element, ind) => {
+        if (ind == index) { } //tidak perlu broadcast ke dia lagi
+        else
+            element.ws.send(JSON.stringify(msg));
+    });
+}
 
 
 
