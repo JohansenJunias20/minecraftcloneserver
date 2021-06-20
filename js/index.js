@@ -38,6 +38,15 @@ const players = [
     // }
 ]
 
+const trees = [
+    
+    {
+        x:2,
+        y:0,
+        z:4
+    }
+]
+
 wss.on('connection', function connection(ws) {
     console.log("made connection")
     ws.on('message', function incoming(message) {
